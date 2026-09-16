@@ -19,6 +19,8 @@ jobs:
         run: |
           set -eu
           test "$(git rev-parse HEAD^{tree})" = cbdaf06f8c5c136831d7a1ed99a9887c71120f9f
+          git fetch --tags --no-recurse-submodules https://github.com/osquery/osquery.git
+          git describe --tags --always
           brew install flex bison coreutils gnu-sed ninja
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
