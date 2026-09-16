@@ -1,0 +1,38 @@
+name: Check Homebrew table on macOS
+on:
+  push:
+    branches: [codex/check-homebrew-macos]
+    paths: [.github/workflows/check-homebrew-macos.yml]
+permissions:
+  contents: read
+jobs:
+  homebrew:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: c58ac4594171bd92d6095d570a8039f7f6088aef
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify source and install build tools
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD^{tree})" = cbdaf06f8c5c136831d7a1ed99a9887c71120f9f
+          brew install flex bison coreutils gnu-sed ninja
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
+          python3 -m venv /tmp/osquery-python
+          /tmp/osquery-python/bin/pip install setuptools jinja2
+          echo /tmp/osquery-python/bin >> "$GITHUB_PATH"
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DOSQUERY_BUILD_TESTS=ON \
+            -DOSQUERY_ENABLE_CCACHE=OFF \
+            -DOSQUERY_NO_DEBUG_SYMBOLS=ON
+      - name: Build integration tests
+        run: cmake --build build --target tests_integration_tables-test -j 3
+      - name: Run Homebrew SQL regressions
+        run: build/tests/integration/tables/tests_integration_tables-test --gtest_filter=homebrewPackages.*
